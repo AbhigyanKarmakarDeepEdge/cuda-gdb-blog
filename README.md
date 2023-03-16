@@ -12,7 +12,7 @@ g++
 Steps
 
 1. Compile the source with\n 
-	nvcc -g -G test__memory_err.cu -o test__memory_err\n
+	nvcc -g -G test__memory_err.cu -o test__memory_err
 	or
 	sh build.sh
 

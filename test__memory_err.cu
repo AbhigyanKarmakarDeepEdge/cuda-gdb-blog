@@ -1,41 +1,40 @@
-constexpr size_t NUM_BLOCKS = 8;
-constexpr size_t THREADS_PER_BLOCK = 16;
-
-__global__ void example(int **data) {
-	size_t threadID = threadIdx.x;
-	size_t blockID = blockIdx.x * blockDim.x;
-	size_t globalID = threadID + blockID;
-	
-	*(data[threadID]) = threadID;
-	*(data[blockID]) = blockID;
-	*(data[globalID]) = globalID;
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+#include <iostream>
+#include <stdio.h>
+__global__ void test__kernel(float* buf, float* result, size_t size)
+{
+	int i = (blockIdx.x + blockIdx.y * gridDim.x + gridDim.x * gridDim.y * blockIdx.z) * (blockDim.x * blockDim.y * blockDim.z) + (threadIdx.z * (blockDim.x * blockDim.y)) + (threadIdx.y * blockDim.x) + threadIdx.x;	
+	result[i] = buf[i] * buf[i+1];
 }
 
-int main(int argc, char *argv[]) {
-	int *host_data[NUM_BLOCKS * THREADS_PER_BLOCK];
-	int **dev_data;
-	const int zero = 0;
+void test__add()
+{
+	float* buf1, * sum;
+	float* g_buf1, * g_sum;
+	size_t size = 1000;
 
-	/*Allocate an integer for each thread in each block */
-	for (int block = 0; block < NUM_BLOCKS; block++) 
-	{
-		for (int thread = 0; thread < THREADS_PER_BLOCK; thread++) 
-		{
-			int idx = thread + block * THREADS_PER_BLOCK;
-			cudaMalloc(&host_data[idx], sizeof(int));
-			cudaMemcpy(host_data[idx], &zero, sizeof(int),
-			cudaMemcpyHostToDevice);
-		}
-	}
+	buf1 = new float[size];
+	sum = new float[size];
 
-	/* This inserts an error into block 4, thread 8*/
-	host_data[4 * THREADS_PER_BLOCK + 8] = NULL;
+	cudaMalloc((void**)&g_buf1, sizeof(float) * size);
+	cudaMalloc((void**)&g_sum, sizeof(float) * size);
 
-	/* Copy the array of pointers to the device */
-	cudaMalloc((void**)&dev_data, sizeof(host_data));
-	cudaMemcpy(dev_data, host_data, sizeof(host_data), cudaMemcpyHostToDevice);
-	
-	/* Execute example */
-	example <<< NUM_BLOCKS, THREADS_PER_BLOCK >>> (dev_data);
+	//Set vals for host buffers
+	for (int i=0 ; i<size ; i++)	buf1[i] = i*0.1;
+
+	cudaMemcpy(g_buf1, buf1, sizeof(float) * (size), cudaMemcpyHostToDevice);
+
+	test__kernel << <dim3(1, size/32 + 1), dim3(32) >> > (g_buf1, g_sum, size);
 	cudaDeviceSynchronize();
+	
+	cudaMemcpy(sum, g_sum, sizeof(float) * size, cudaMemcpyDeviceToHost);
+	for (int i=0 ; i<size ; i++)	std::cout << sum[i] << ", ";
+	std::cout << std::endl;
+}
+
+
+int main()
+{
+	test__add();
 }

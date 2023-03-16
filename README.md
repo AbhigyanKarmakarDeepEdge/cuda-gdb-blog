@@ -11,8 +11,10 @@ g++
 
 Steps
 
-1. Compile the source 
-	nvcc -g -G test__memory_err.cu -o test__memory_err
+1. Compile the source with\n 
+	nvcc -g -G test__memory_err.cu -o test__memory_err\n
+	or
+	sh build.sh
 
 2. Execute program 
 	./test__memory_err
